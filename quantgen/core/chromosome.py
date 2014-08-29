@@ -119,6 +119,19 @@ class chromosome(object):
             return (len(self)-2,len(self)-1)
         else:
             return lower_locus_ind, (lower_locus_ind+1)
+    def get_locus(self, locus_ind):
+        """ Gets a locus object by index
+
+        Parameters
+        ----------
+        locus_ind : int
+            The index of the locus
+
+        Returns:
+
+        The locus object at the index
+        """
+        return self.lociList[locus_ind]
     def get_chrom_length(self):
         """ Gets the length of the chromosome in centimorgans
 

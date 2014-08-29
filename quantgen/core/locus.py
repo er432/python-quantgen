@@ -23,6 +23,8 @@ class locus(object):
     def __repr__(self):
         return "Locus(%0.5g cM; a=%0.3g, d=%0.3g)" % (self.genetic_loc,
                                                       self.a, self.k)
+    def __hash__(self):
+        return super(locus, self).__hash__()
     def __eq__(self, other):
         if not isinstance(other, locus):
             return False
@@ -87,6 +89,26 @@ class locus(object):
         alpha, the average effect of allelic substitution
         """
         return self.a*(1+self.k*(2*p1-1))
+    def get_raw_G(self, allele1, allele2):
+        """ Gets the value of G for this locus, given a genotype
+
+        Parameters
+        ----------
+        allele1 : int
+            0 or 1 for the first allele
+        allele2 : int
+            0 or 1 for the second allele
+
+        Returns
+        -------
+        The value of G
+        """
+        if allele1 != allele2:
+            return(self.a*(1+self.k))
+        elif allele1 == 0:
+            return 0.
+        elif allele1 == 1:
+            return 2*self.a
     def get_mu_G(self, p1):
         """ Gets the theoretical average phenotype assuming the locus
         is the only locus affecting the phenotype
@@ -116,6 +138,16 @@ class locus(object):
         """
         alpha = self.get_alpha(p1)
         return p1*alpha,(p1-1)*alpha
+    def set_a(self, a):
+        """ Sets the value of a for the locus
+
+        Parameters
+        ----------
+        a : float
+             Half the genotypic value of the homozygote for the second
+             allele
+        """
+        self.a = a
     def set_cM(self, location):
         """ Sets the genetic location of the locus
 
@@ -125,3 +157,13 @@ class locus(object):
             The location of the locus in centimorgans
         """
         self.genetic_loc = location
+    def set_k(self, k):
+        """ Sets the value of k for the locus
+
+        Parameters
+        ----------
+        k : float
+             The dominance value, where k=0 is no dominance, k=1 is dominance
+             of second allele, and k=-1 is dominance of first allele        
+        """
+        self.k = k

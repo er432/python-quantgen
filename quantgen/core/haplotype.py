@@ -57,7 +57,6 @@ class haplotype(chromosome):
         else:
             # Get recombination breakpoints
             breakpoints = deque(haplo1.get_recomb_points())
-            print breakpoints
             # Create new haplotypes
             new_haplo1 = haplotype(haplo1)
             new_haplo2 = haplotype(haplo2)

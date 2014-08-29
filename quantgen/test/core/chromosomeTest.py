@@ -26,7 +26,7 @@ class chromosomeTest(unittest.TestCase):
         a.add_locus(locus(0.4,0.03),pos=5.)
         locus1,locus2=a.get_bordering_loci(2.)
         self.assertEqual(locus1, locus(0.1,0.,0.))
-        self.assertEqual(locus1, locus(0.4,0.03,5.))
+        self.assertEqual(locus2, locus(0.4,0.03,5.))
     def test_get_bordering_loci_inds(self):
         if debug: print("Test get_bordering_loci_inds")
         a = chromosome()
