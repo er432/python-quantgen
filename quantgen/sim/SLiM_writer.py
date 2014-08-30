@@ -50,7 +50,7 @@ class SLiM_generator:
                  starting_pop_nickname='start'):
         """ Instantiates an object capable of generating a SLiM file.
 
-        Also adds a single neutrla mutation type as m1
+        Also adds a single neutral mutation type as m1 (nickname 'neutral')
 
         Parameters
         ----------
@@ -73,7 +73,7 @@ class SLiM_generator:
         self.generations = generations
         self.mutation_types = {'neutral':('m1',0,'f',0.)}
         self.recomb_rates = RangeMap(rangeDict={
-            Range.closed(1,chrom_length): recomb_rate
+            Range.closed(1,int(chrom_length)): recomb_rate
         })
         self.chrom_length = chrom_length
         self.populations[starting_pop_nickname] = [(1,'P','p1',starting_pop_size)]
@@ -549,7 +549,7 @@ class SLiM_generator:
             # Write the recombination rates
             write_file.write("#RECOMBINATION RATE\n")
             for seg in self.recomb_rates:
-                write_file.write("%d %0.5g\n" % (seg.upperEndpoint(),self.recomb_rates[seg]))
+                write_file.write("%d %0.5g\n" % (seg.upperEndpoint(),list(self.recomb_rates[seg])[0]))
             # Write the number of generations
             write_file.write("#GENERATIONS\n")
             write_file.write("%d\n" % self.generations)
@@ -588,5 +588,8 @@ class SLiM_generator:
                 write_file.write("%d\n" % self.seed)
             write_file.close()
             # Break from loop if all the genomic elements have been written
-            if last_element_ind == len(self.elements): break 
+            if max_size:
+                if last_element_ind == (len(self.elements)): break
+            else:
+                break
         return
