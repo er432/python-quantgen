@@ -1,13 +1,25 @@
+from quantgen.core.haplotype import haplotype
 import sys
+import numpy as np
+from abc import ABCMeta
 
 if sys.version_info[0] > 2:
     xrange = range
+
+class individual:
+    __metaclass__ = ABCMeta
+    @classmethod
+    def __subclasshook__(cls, C):
+        if issubclass(C, diploidIndividual):
+            return True
+        else:
+            return False
 
 class diploidIndividual(object):
     """ Represents an individual composed of 1 or more chromosomes,
     each of which has 2 haplotypes
     """
-    def __init__(self, haplotype_dict = None, environment = 0.):
+    def __init__(self, haplotype_dict = None):
         """ Instantiates an individual
 
         Parameters
@@ -15,8 +27,6 @@ class diploidIndividual(object):
         haplotype_dict : dict
             Dictionary of 'chromosome_name' -> (haplotype1, haplotype2),
             where each haplotype is a haplotype object
-        environment : float
-            The environmental value to add (everything not encompassed by genotype)
         """
         if haplotype_dict:
             self._haplotype_dict = haplotype_dict
@@ -38,3 +48,33 @@ class diploidIndividual(object):
                 locus = haplotypes[0].get_locus(i)
                 G += locus.get_raw_G(haplotypes[0][i],haplotypes[1][i])
         return G
+    def mate(self, other):
+        """ Mates 2 diploidIndividuals to produce a new diploidIndividual
+
+        Parameters
+        ----------
+        other: diploidIndividual
+            The individual to mate with
+
+        Returns
+        -------
+        The new diploidIndividual resulting from the mating
+        """
+        new_dict = {}
+        for chrom_name, haplotypes in self.haplotype_dict.items():
+            # Get gamete chromosomes from first individual
+            new_haplotypes1 = haplotype.recombine2(*haplotypes)
+            # Get gamete chromosome from second individual
+            new_haplotypes2 = haplotype.recombine2(*other.haplotype_dict[chrom_name])
+            # Select which recombinant chromosomes go into individual
+            new_dict[chrom_name] = []
+            rands = np.random.rand(2)
+            if rands[0] < 0.5:
+                new_dict[chrom_name].append(new_haplotypes1[0])
+            else:
+                new_dict[chrom_name].append(new_haplotypes1[1])
+            if rands[1] < 0.5:
+                new_dict[chrom_name].append(new_haplotypes2[0])
+            else:
+                new_dict[chrom_name].append(new_haplotypes2[1])
+        return diploidIndividual(haplotype_dict=new_dict)
