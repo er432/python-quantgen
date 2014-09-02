@@ -6,12 +6,13 @@ import sys
 
 packages = ['quantgen',
             'quantgen.core',
+            'quantgen.sim',
             'quantgen.test',
             'quantgen.test.core'
            ]
 setup(
     name='quantgen',
-    version='0.1',
+    version='0.2',
     author='Eli Rodgers-Melnick',
     author_email='er432@cornell.edu',
     description='Quantitative genetics in Python',
