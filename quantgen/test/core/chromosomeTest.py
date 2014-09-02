@@ -17,6 +17,22 @@ class chromosomeTest(unittest.TestCase):
         self.assertEqual(a[1],locus(0.4,0.03,5.))
         self.assertEqual(a[2],locus(0.004,0.02,5.8))
         self.assertEqual(a[3],locus(0.009,0.01,21.8))
+    def test_get_locus(self):
+        if debug: print("Test get_locus")
+        a = chromosome()
+        a.add_locus(locus(0.1,0.))
+        a.add_locus(locus(0.009,0.01),pos=21.8)
+        a.add_locus(locus(0.004,0.02),pos=5.8)
+        a.add_locus(locus(0.4,0.03),pos=5.)
+        self.assertEqual(a.get_locus(1),locus(0.4,0.03,5.))
+    def test_get_locus_by_name(self):
+        if debug: print("Test get_locus_by_name")
+        a = chromosome()
+        a.add_locus(locus(0.1,0.))
+        a.add_locus(locus(0.009,0.01),pos=21.8)
+        a.add_locus(locus(0.004,0.02),pos=5.8)
+        a.add_locus(locus(0.4,0.03),pos=5.)
+        self.assertEqual(a.get_locus_by_name(3),locus(0.4,0.03,5.))            
     def test_get_bordering_loci(self):
         if debug: print("Test get_bordering_loci")
         a = chromosome()

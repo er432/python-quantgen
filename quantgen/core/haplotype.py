@@ -20,8 +20,11 @@ class haplotype(chromosome):
         ValueError
             If the number of loci doesn't match the number of genotypes
         """
+        super(haplotype, self).__init__()
         self.lociList = chromosome.lociList
         self.adj = chromosome.adj
+        self.locus_id_dict = chromosome.locus_id_dict
+        self.locus_id_list = chromosome.locus_id_dict
         if genos is None:
             self.genos = [0]*len(self)
         elif len(genos) != len(self):

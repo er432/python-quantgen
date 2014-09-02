@@ -1,6 +1,7 @@
 import re
 from Ranger import RangeMap
 from Ranger import Range
+from quantgen.core.population import population_builder
 
 ## Compile regular expressions for determining floats and ints
 int_re = re.compile(r'^-*[\d]+$')
@@ -39,14 +40,15 @@ class slim_parser(object):
         self.seed = None
         # Parse parameters
         current_param = None
-        for line in self.handle:
+        while 1:
+            line = line = self.handle.readline()
             line = line.strip()
             if line.startswith('#'):
                 # Start out new parameter
                 current_param = line[1:]
-                if current_param.split(' ')[0] == 'OUT':
+                if current_param.split(' ')[0] == 'OUT:':
                     output = self._line_to_typed_tuple(line)
-                    self.output_generation_dict[(output[0],output[1])] = self.handle.tell()
+                    self.output_generation_dict[(output[1],output[2])] = self.handle.tell()
             elif current_param == 'MUTATION RATE':
                 self.mu = float(line)
             elif current_param == 'MUTATION TYPES':
@@ -74,6 +76,8 @@ class slim_parser(object):
                 demo_info = self._line_to_typed_tuple(line)
                 if demo_info[1] == 'P':
                     self.populations[demo_info[2]] = demo_info
+            elif len(line) < 2:
+                break
     def _line_to_typed_tuple(self, line):
         """ Converts a line in the SLiM file to a tuple with appropriate
         types (e.g. ints where ints should be and floats where floats should be)
@@ -118,9 +122,9 @@ class slim_parser(object):
             if line[0] == 'Mutations:': continue
             elif isinstance(line[0], int):
                 yield line
-            elif line.startswith('Genotypes'):
+            elif line[0].startswith('Genomes'):
                 break
-            elif line.startswith('#'): break
+            elif line[0].startswith('#'): break
     def parse_genotypes(self, generation, out_type='A'):
         """ Parses the genotypes in the output for a certain generation of
         a certain output type
@@ -139,7 +143,7 @@ class slim_parser(object):
         self.handle.seek(self.output_generation_dict[(generation,out_type)])
         ready = False
         for line in self.handle:
-            if line.startswith('Genotypes'):
+            if line.startswith('Genomes'):
                 ready = True
             elif not ready:
                 continue
@@ -151,4 +155,48 @@ class slim_parser(object):
                 id = line[0].split(':')[1]
                 mutations = map(int,line[1:])
                 yield pop, id, mutations
-            
+    def make_diploid_population(self, generation, out_type='A'):
+        """ Makes a population of diploidIndividuals out of the
+        simulation haplotypes at a certain generation
+
+        Parameters
+        ----------
+        generation : int
+            The generation for the output
+        out_type : str
+            The output type ('A','R','F')
+
+        Returns
+        -------
+        population consisting of diploid individuals, wherein each individual
+        consists of two consecutive haplotypes        
+        """
+        builder = population_builder()
+        def get_genetic_pos(base_pos):
+            total_cM = 0.
+            for i,recomb_range in enumerate(self.recomb_rates.ranges):
+                if recomb_range.contains(base_pos):
+                    total_cM += self.recomb_rates.items[i]*\
+                      (base_pos-recomb_range.lowerEndpoint())*100
+                    return total_cM
+                else:
+                    total_cM += self.recomb_rates.items[i]*\
+                      (recomb_range.upperEndpoint()-recomb_range.lowerEndpoint())*100
+        subtract_val = None
+        # Add the mutations to the builder
+        for mut_id, mut_type, mut_position, s, h,\
+            count in self.parse_mutations(generation, out_type):
+            gen_position = get_genetic_pos(mut_position)
+            if subtract_val is None:
+                subtract_val = gen_position
+            builder.add_locus(1, mut_id,
+                              genetic_position=gen_position-subtract_val)
+        haplotypes = []
+        # Add individuals to the builder
+        for pop, haplo_id, mutations in self.parse_genotypes(generation, out_type):
+            haplotypes.append(mutations)
+            if len(haplotypes) == 2:
+                builder.add_diploid_individual(haplotypes[0], haplotypes[1])
+                haplotypes = []
+        # Build the population
+        return builder.build()

@@ -61,11 +61,11 @@ class diploidIndividual(object):
         The new diploidIndividual resulting from the mating
         """
         new_dict = {}
-        for chrom_name, haplotypes in self.haplotype_dict.items():
+        for chrom_name, haplotypes in self._haplotype_dict.items():
             # Get gamete chromosomes from first individual
             new_haplotypes1 = haplotype.recombine2(*haplotypes)
             # Get gamete chromosome from second individual
-            new_haplotypes2 = haplotype.recombine2(*other.haplotype_dict[chrom_name])
+            new_haplotypes2 = haplotype.recombine2(*other._haplotype_dict[chrom_name])
             # Select which recombinant chromosomes go into individual
             new_dict[chrom_name] = []
             rands = np.random.rand(2)
