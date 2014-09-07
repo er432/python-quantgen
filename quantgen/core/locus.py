@@ -137,7 +137,7 @@ class locus(object):
         alpha1, alpha2
         """
         alpha = self.get_alpha(p1)
-        return p1*alpha,(p1-1)*alpha
+        return -1*(1-p1)*alpha,p1*alpha
     def set_a(self, a):
         """ Sets the value of a for the locus
 

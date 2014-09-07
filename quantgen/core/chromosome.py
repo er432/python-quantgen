@@ -218,6 +218,15 @@ class chromosome(object):
         The index of the locus
         """
         return self.locus_id_dict[locus_name]
+    def get_locus_names(self):
+        """ Gets the names of the loci, in the same order as they are
+        arranged on the chromosome
+
+        Returns
+        -------
+        The ordered locus names
+        """
+        return list(self.locus_id_list)
     def get_chrom_length(self):
         """ Gets the length of the chromosome in centimorgans
 

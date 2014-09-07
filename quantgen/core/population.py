@@ -39,7 +39,129 @@ class population(object):
             raise TypeError("%s is not an individual" % type(ind))
         else:
             self.individuals.append(ind)
-    def random_mate(self, n, selfing=False):
+    def get_all_theoretical_breeding_values(self):
+        """ Gets the breeding values of all individuals under the assumption of
+        random mating and the assumption that all locus a parameters are set. Also
+        note that allele frequencies are the maximum likelihood frequencies within this
+        population
+
+        Returns
+        -------
+        List of breeding values in same order as individuals
+        """
+        # Get allele frequencies for all alpha != 0 loci
+        allele_freq_dict = {}
+        for chrom in self.individuals[0].get_chromosome_names():
+            for locus_name in self.individuals[0].get_locus_names(chrom):
+                locus = self.individuals[0].get_locus_by_name(chrom, locus_name)
+                a,d = locus.get_a_d_values()
+                if a == 0: continue
+                else:
+                    counts = self.get_allele_counts(chrom,locus_name)
+                    allele_freq_dict[(chrom,locus_name)] = float(counts[0])/sum(counts)
+        breeding_vals = []
+        for ind in self.individuals:
+            breeding_vals.append(ind.get_theoretical_breeding_value(allele_freq_dict))
+        return breeding_vals
+    def get_allele_counts(self, chrom_name, locus_name):
+        """ Gets the counts of each allele type at a locus
+
+        Parameters
+        ----------
+        chrom_name : hashable
+            The name of the chromosome containing the locus
+        locus_name : hashable
+            The name of the locus on the chromosome
+
+        Returns
+        -------
+        count of allele0, count of allele1
+        """
+        counts = [0,0]
+        for individual in self.individuals:
+            alleles = individual.get_alleles(chrom_name, locus_name)
+            counts[0] += alleles.count(0)
+            counts[1] += alleles.count(1)
+        return counts
+    def get_marker_matrix(self, specific_markers = None, specific_individuals = None):
+        """ Gets a matrix of the genetic markers in this population, where the
+        rows correspond to samples, the columns to markers, and the entries to the
+        number of alternative allele counts for that marker in that sample
+
+        Parameters
+        ----------
+        specific_markers : dict, optional
+            Dictionary of chrom_name -> [locus_name1, locus_name2, etc] for
+            specific loci that you want to include in the matrix. If None, all
+            loci will be included
+        specific_individuals : list, optional
+            List of the indices of individuals to include in the matrix. If
+            None, all individuals will be included
+
+        Returns
+        -------
+        marker_matrix, list of (chrom_name, locus_name) tuples in same order as columns
+        """
+        # Specify individuals, markers if necessary
+        if not specific_individuals:
+            specific_individuals = range(len(self.individuals))
+        if not specific_markers:
+            specific_markers = {}
+            for chrom in self.individuals[0].get_chromosome_names():
+                specific_markers[chrom] = []
+                for locus_name in self.individuals[0].get_locus_names(chrom):
+                    specific_markers[chrom].append(locus_name)
+        marker_mat = np.zeros((len(specific_individuals),
+                               sum([len(v) for v in specific_markers.values()])))
+        markers = []
+        for chrom, marker_names in specific_markers.items():
+            for marker_name in marker_names: markers.append((chrom,marker_name))
+        # Fill up the matrix
+        for mat_i,i in enumerate(specific_individuals):
+            for j,(chrom_name,marker_name) in enumerate(markers):
+                marker_mat[mat_i,j] = self.individuals[i].get_alleles(chrom_name, marker_name).count(1)
+        return marker_mat, markers
+    def get_theoretical_additive_variance(self):
+        """ Gets the theoretical additive variance in the population under the
+        assumption of random mating and the assumption that all locus a parameters are set.
+        Also note that allele frequencies are the maximum likelihood frequences within this population.
+
+
+        This function first calculates all breeding values and then calculates the sample
+        variance of those breeding values.
+
+        Returns
+        -------
+        The theoretical additive variance of the population
+        """
+        breeding_vals = self.get_all_theoretical_breeding_values()
+        return np.var(breeding_vals,ddof=1)
+    def get_theoretical_breeding_value(self, ind):
+        """ Gets the breeding value of the individual under the assumption of random
+        mating and the assumption that all locus a parameters are set. Also note that
+        allele frequencies are the maximum likelihood frequencies within this population
+
+        Parameters
+        ----------
+        ind : int
+            Index of the individual for which you want the breeding value
+
+        Returns
+        -------
+        Theoretical breeding value for the individual
+        """
+        # Get allele frequencies for all alpha != 0 loci
+        allele_freq_dict = {}
+        for chrom in self.individuals[ind].get_chromosome_names():
+            for locus_name in self.individuals[ind].get_locus_names(chrom):
+                locus = self.individuals[ind].get_locus_by_name(chrom, locus_name)
+                a,d = locus.get_a_d_values()
+                if a == 0: continue
+                else:
+                    counts = self.get_allele_counts(chrom,locus_name)
+                    allele_freq_dict[(chrom,locus_name)] = float(counts[0])/sum(counts)
+        return self.individuals[ind].get_theoretical_breeding_value(allele_freq_dict)
+    def random_mate(self, n, selfing=False, obligate_xo=True):
         """ Randomly selects pairs to be mated until a population of a certain
         size exists
 
@@ -47,8 +169,10 @@ class population(object):
         ----------
         n : int
             The size of the resulting population
-        selfing : boolean
+        selfing : boolean, optional
             Whether selfing is allowed
+        obligate_xo,: boolean, optional
+            If true, requires at least 1 crossover per chromosome during mating
 
         Returns
         -------
@@ -60,18 +184,20 @@ class population(object):
                 # Pull 2 random indices
                 sire,dam = np.random.randint(low=0,high=len(self.individuals),
                                              size=2)
-                individuals.append(self.individuals[sire].mate(self.individuals[dam]))
+                individuals.append(self.individuals[sire].mate(self.individuals[dam],
+                                                               obligate=obligate_xo))
             else:
                 sire,dam = np.random.randint(low=0,high=len(self.individuals),
                                              size=2)
                 if dam == sire:
-                    if sire == (len(self.individuals-1)):
+                    if sire == (len(self.individuals)-1):
                         sire -=1
                     else:
                         sire += 1
-                individuals.append(self.individuals[sire].mate(self.individuals[dam]))
+                individuals.append(self.individuals[sire].mate(self.individuals[dam],
+                                                               obligate=obligate_xo))
         return population(individuals=individuals)
-    def mate_2(self, ind1, ind2, n):
+    def mate_2(self, ind1, ind2, n, obligate_xo=True):
         """ Mates 2 individuals in the population
 
         Parameters
@@ -82,6 +208,8 @@ class population(object):
             The index for the second individual to mate (dam)
         n : int
             The number of offspring to generate
+        obligate_xo : boolean, optional
+            If true, requires at least 1 crossover per chromosome during mating
 
         Returns
         -------
@@ -89,7 +217,7 @@ class population(object):
         """
         individuals = []
         for i in xrange(n):
-            individuals.append(self.individuals[ind1].mate(self.individuals[ind2]))
+            individuals.append(self.individuals[ind1].mate(self.individuals[ind2],obligate=obligate_xo))
         return population(individuals = individuals)
     def set_a(self, a, chrom_name, locus_name):
         """ Sets the value of a for a locus

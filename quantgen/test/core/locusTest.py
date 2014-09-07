@@ -15,8 +15,8 @@ class locusTest(unittest.TestCase):
     def test_get_alpha(self):
         if debug: print("Testing get_alpha")
         alpha1,alpha2 = self.theLocus.get_alpha_vals(0.5)
-        self.assertAlmostEqual(alpha1, 0.295, places=3)
-        self.assertAlmostEqual(alpha2, -0.295, places=3)
+        self.assertAlmostEqual(alpha1, -0.295, places=3)
+        self.assertAlmostEqual(alpha2, 0.295, places=3)
     def test_get_raw_G(self):
         if debug: print("Testing get_raw_G")
         self.assertEqual(self.theLocus.get_raw_G(0,0),0.)

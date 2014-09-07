@@ -1,4 +1,5 @@
 import unittest
+import numpy as np
 from quantgen.core.chromosome import chromosome
 from quantgen.core.locus import locus
 from quantgen.core.diploidIndividual import diploidIndividual
@@ -23,6 +24,15 @@ class diploidIndividualTest(unittest.TestCase):
         if debug: print("Testing get_raw_nonepistatic_G")
         val = self.individual.get_raw_nonepistatic_G()
         self.assertAlmostEqual(val,0.1+0.4*1.03+0.004*1.02+0.009*1.01)
+    def test_get_alleles(self):
+        if debug: print("Testing get_alleles")
+        self.assertEqual(self.individual.get_alleles(1,0),(0,1))
+    def test_mate(self):
+        if debug: print("Testing mate")
+        np.random.seed(12345)
+        offspring = self.individual.mate(self.individual)
+        self.assertEqual(offspring._haplotype_dict[1][0].genos,[1,1,1,0])
+        self.assertEqual(offspring._haplotype_dict[1][1].genos,[1,0,0,0])
 if __name__ == "__main__":
     debug = True
     unittest.main(exit = False)

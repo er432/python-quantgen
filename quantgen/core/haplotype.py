@@ -36,7 +36,7 @@ class haplotype(chromosome):
     def __setitem__(self, ind, geno):
         self.genos[ind] = geno
     @staticmethod
-    def recombine2(haplo1, haplo2):
+    def recombine2(haplo1, haplo2, obligate=True):
         """ Recombines 2 haplotypes
 
         Parameters
@@ -45,6 +45,8 @@ class haplotype(chromosome):
             The first haplotype
         haplo2 : haplotype
             The second haplotype
+        obligate : boolean, optional
+            If true, requires at least 1 crossover to take place
 
         Raises
         ------
@@ -59,7 +61,7 @@ class haplotype(chromosome):
             raise ValueError("Chromosomes differ in length")
         else:
             # Get recombination breakpoints
-            breakpoints = deque(haplo1.get_recomb_points())
+            breakpoints = deque(haplo1.get_recomb_points(obligate))
             # Create new haplotypes
             new_haplo1 = haplotype(haplo1)
             new_haplo2 = haplotype(haplo2)
