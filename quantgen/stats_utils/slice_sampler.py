@@ -1,4 +1,5 @@
 from Ranger import Range
+from functools import partial
 import numpy as np
 import sys
 
@@ -32,7 +33,8 @@ class slice_sampler(object):
         ----------
         log_f : callable
             A function that returns the log of the function you want to
-            sample and accepts a numpy array as an argument (the x)
+            sample and accepts a numpy array (or scalar if univariate function)
+            as an argument (the x)
         """
         self._g = log_f
 class univariate_slice_sampler(slice_sampler):
@@ -45,7 +47,7 @@ class univariate_slice_sampler(slice_sampler):
         ----------
         log_f : callable
             A function that returns the log of the function you want to
-            sample and accepts a numpy array as an argument (the x)
+            sample and accepts a scalar as an argument (the x)
         """        
         super(univariate_slice_sampler, self).__init__(log_f)
     def accept_doubling(self, x0, x1, y, w, interval):
@@ -216,7 +218,7 @@ class univariate_slice_sampler(slice_sampler):
                 raise ValueError("%s is not an interval method" % interval_method)
             # Draw new point
             x0 = self.sample_by_shrinkage(x0, y, w, interval, doubling_used=doubling_used)
-            yield x0
+            yield float(x0)
     def sample_by_shrinkage(self, x0, y, w, interval, doubling_used = False):
         """ Samples a point from an interval using the shrinkage procedure
         (See Radford paper at http://www.cs.toronto.edu/~radford/ftp/slc-samp.pdf)
@@ -261,5 +263,83 @@ class univariate_slice_sampler(slice_sampler):
             else:
                 R_bar = x1
         return x1
-        
-        
+class multivariate_slice_sampler(slice_sampler):
+    """ Run slice sampling on multivariate functions
+    """
+    def __init__(self, log_f, dim):
+        """ Instantiates a slice sampler
+
+        Parameters
+        ----------
+        log_f : callable
+            A function that returns the log of the function you want to
+            sample and accepts a numpy array as an argument (the x)
+        dim : int
+            The dimensionality of the x (e.g. 2 for a bivariate normal)
+        """        
+        super(multivariate_slice_sampler, self).__init__(log_f)
+        self._dim = dim
+    def run_sampler_univariates(self, x0_start, n_samp = 10000,
+                                interval_method='doubling', w=0.1, m=None,
+                                p=None):
+        """ Runs the slice sampler by cycling through univariate samplers
+        of each x_i with the other x_i's held fixed (like a Gibbs sampler)
+
+        Parameters
+        ----------
+        x0_start : np.ndarray
+            An initial value for x
+        n_samp : int
+            The number of samples to take. This refers to the number of times
+            the sampler cycles through ALL x_i
+        interval_method : str
+            The method for determining the interval at each stage of sampling. Possible values
+            are 'doubling', 'stepping'.
+        w : float
+            Estimate of typical slice size
+        m : int, optional (Only relevant for stepping interval procedure)
+            Integer, where maximum size of slice should be mw. If None,
+            then interval can grow without bound.
+        p : int, optional (Only relevant for doubling interval procedure)
+            Integer limiting the size of a slice to (2^p)w. If None,
+            then interval can grow without bound
+
+        Returns
+        -------
+        Generator of samples from the distribution
+
+        Examples
+        --------
+        from quantgen.stats_utils.slice_sampler import multivariate_slice_sampler
+        from scipy.stats import multivariate_normal
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        cov = np.eye(2)
+        cov[0,1]=0.9
+        cov[1,0]=0.9
+        rv = multivariate_normal(np.zeros(2),cov)
+        sampler = multivariate_slice_sampler(rv.logpdf, 2)
+        samples = np.array([x for x in sampler.run_sampler_univariates(np.zeros(2))])        
+        """
+        x0 = np.array(x0_start)
+        if len(x0) != self._dim:
+            raise ValueError("x0_start is not of the correct dimension")
+        ## Create a univariate sampler for each x_i, storing in a list
+        samplers = []
+        def func(x_i, adj_ind):
+            mult_arr = np.ones(self._dim)
+            mult_arr[adj_ind] = 0
+            add_arr = np.zeros(self._dim)
+            add_arr[adj_ind] = x_i
+            return self._g(np.multiply(x0,mult_arr)+add_arr)        
+        for i in xrange(self._dim):
+            samplers.append(univariate_slice_sampler(partial(func, adj_ind=int(i))))
+        ## Run through sampling
+        for i in xrange(n_samp):
+            # Go through each of the univariate samplers in turn
+            for j,sampler in enumerate(samplers):
+                x0[j] = next(sampler.run_sampler(x0_start=x0[j], n_samp=1,
+                        interval_method=interval_method, w=w, m=m, p=p))
+            # Yield the current sample
+            yield np.array(x0)
